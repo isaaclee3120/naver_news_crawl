@@ -14,6 +14,21 @@ from openpyxl import load_workbook
 
 from dartdb import DartDb
 
+# 전역변수
+month_dict = {
+    'Jan': '01',
+    'Feb': '02',
+    'Mar': '03',
+    'Apr': '04',
+    'May': '05',
+    'Jun': '06',
+    'Jul': '07',
+    'Aug': '08',
+    'Sep': '09',
+    'Oct': '10',
+    'Nov': '11',
+    'Dec': '12'
+}
 header_api = {
     'accept': 'application/json',
     'X-Naver-Client-Id': '',
@@ -29,6 +44,23 @@ major_urls = {
     'hangook': 'hankookilbo.com'
 }
 company_list = list()
+
+
+# 날짜 변환
+def _make_date(date_str, format):
+    pattern = '[0-9]+ [a-zA-Z]+ [0-9]+ [0-9]+:[0-9]+:[0-9]+'
+    date = re.search(pattern, date_str).group().split(' ')
+    time = date[3].split(':')
+
+    result = (format + ' ')[:-1]
+    result = result.replace('YYYY', str(date[2]))
+    result = result.replace('MM', month_dict[date[1]].zfill(2))
+    result = result.replace('DD', str(date[0]).zfill(2))
+    result = result.replace('hh', str(time[0]).zfill(2))
+    result = result.replace('mm', str(time[1]).zfill(2))
+    result = result.replace('ss', str(time[2]).zfill(2))
+
+    return result
 
 
 # 기업명 로딩
@@ -117,16 +149,19 @@ def get_content_thebell(link):
 # 뉴스 1개에 대해 dict로 정리.
 def make_dict(raw_json, keyword, content=''):
     result = dict()
+    # 데이터 저장
     result['keyword'] = keyword
     result['title'] = html.unescape(raw_json['title']).replace('<b>', '').replace('</b>', '').replace('"', '\'').replace('`', "'")
     result['link'] = html.unescape(raw_json['link']).replace('"', '\'').replace('`', "'")
     result['id'] = '{0} :: {1}'.format(keyword, result['link'])
     result['originallink'] = raw_json['originallink']
+    # 내용 수집 불가 -> 요약본으로 대체
     if content == '':
         result['content'] = raw_json['description'].replace('"', "'")
     else:
         result['content'] = content.replace('"', "'")
-    result['date'] = raw_json['pubDate']
+    # 날짜 형식 변경 (yyyy-mm-dd)
+    result['date'] = _make_date(raw_json['pubDate'], date_format)
     return result
 
 
@@ -212,6 +247,7 @@ if __name__ == "__main__":
         'charset': config['DATABASE']['CHARSET']
     }
     table_name = config['DATABASE']['TABLE_NAME']
+    date_format = config['DATABASE']['DATE_FORMAT']
 
     load_targets(file_name)
 
