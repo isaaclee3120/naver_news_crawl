@@ -34,7 +34,6 @@ header_api = {
     'X-Naver-Client-Id': '',
     'X-Naver-Client-Secret': ''
 }
-
 major_urls = {
     'thebell': 'thebell.co.kr',
     'chosun': 'news.chosun.com',
