@@ -9,12 +9,15 @@ import requests
 import configparser
 from tqdm import tqdm
 from time import sleep
+from datetime import date
 from bs4 import BeautifulSoup
 from openpyxl import load_workbook
 
 from dartdb import DartDb
 
 # 전역변수
+crawl_by_date = False
+last_date = date(2999, 12, 31)
 month_dict = {
     'Jan': '01',
     'Feb': '02',
@@ -181,9 +184,20 @@ def main(keyword, **kwargs):
 
     cnt = 0
     temp_list = list()
+    done = False
     for i in range(reqs + 1):
+        if done:
+            break
         start = i * 100 + 1
-        for item in tqdm(get_json(keyword, start=start)['items'], desc='\'{}\' 상세 수집 ({}/{})'.format(keyword, i, reqs), ncols=100, leave=False):
+        for item in tqdm(get_json(keyword, start=start)['items'], desc='\'{}\' 상세 수집 ({}/{})'.format(keyword, i, reqs), ncols=80, leave=False):
+            # 날짜 확인
+            if crawl_by_date:
+                temp_date = _make_date(item['pubDate'], 'YYYY-MM-DD').split('-')
+                delta_date = date(int(temp_date[0]), int(temp_date[1]), int(temp_date[2])) - last_date
+                if delta_date.days < 0:
+                    done = True
+                    break
+
             try:
                 if cnt > kwargs['count']:
                     status = kwargs['func'](temp_list)
@@ -247,6 +261,9 @@ if __name__ == "__main__":
     }
     table_name = config['DATABASE']['TABLE_NAME']
     date_format = config['DATABASE']['DATE_FORMAT']
+    crawl_by_date = bool(config['DATE']['CRAWL_BY_DATE'])
+    _last_date = str(config['DATE']['LAST_DATE']).split('-')
+    last_date = date(int(_last_date[0]), int(_last_date[1]), int(_last_date[2]))
 
     load_targets(file_name)
 
